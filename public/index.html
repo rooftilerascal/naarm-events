@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Events in Naarm</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <h1>Events in Naarm</h1>
+    <p class="tagline">Melbourne gigs and events, pulled from Ticketmaster &amp; the RRR Gig Guide</p>
+  </header>
+
+  <div class="controls">
+    <div class="quick-filters" id="quick-filters">
+      <button class="chip is-active" data-range="all" type="button">All upcoming</button>
+      <button class="chip" data-range="today" type="button">Today</button>
+      <button class="chip" data-range="tomorrow" type="button">Tomorrow</button>
+      <button class="chip" data-range="weekend" type="button">This weekend</button>
+    </div>
+
+    <div class="filters">
+      <input id="filter-search" type="search" placeholder="Search by name or venue…" />
+      <select id="filter-suburb"><option value="">All suburbs</option></select>
+      <select id="filter-category"><option value="">All categories</option></select>
+      <select id="filter-source"><option value="">All sources</option></select>
+    </div>
+  </div>
+
+  <p id="result-count" class="result-count"></p>
+
+  <main>
+    <p id="status" class="status">Loading events…</p>
+    <div id="agenda" class="agenda"></div>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

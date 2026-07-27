@@ -1,0 +1,19 @@
+{
+  "name": "naarm-events-pipeline",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "ingest:ticketmaster": "node scripts/ingest-ticketmaster.js",
+    "ingest:rrr": "node scripts/ingest-rrr.js",
+    "ingest:art-openings": "node scripts/ingest-art-openings.js"
+  },
+  "dependencies": {
+    "cheerio": "^1.2.0",
+    "dotenv": "^16.4.5",
+    "node-ical": "^0.27.1"
+  },
+  "devDependencies": {
+    "serve": "^14.2.6"
+  }
+}
