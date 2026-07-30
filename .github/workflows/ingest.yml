@@ -1,0 +1,35 @@
+name: Ingest events
+
+on:
+  schedule:
+    # 18:00 UTC = ~4-5am Melbourne time, before most people are checking the site
+    - cron: '0 18 * * *'
+  workflow_dispatch: {} # lets you trigger a run manually from the Actions tab
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      # continue-on-error on each step so one source having a bad day (e.g. a site
+      # briefly down) doesn't block the others from updating.
+      - name: Ticketmaster
+        run: npm run ingest:ticketmaster
+        continue-on-error: true
+      - name: RRR Gig Guide
+        run: npm run ingest:rrr
+        continue-on-error: true
+      - name: Art Openings Melbourne
+        run: npm run ingest:art-openings
+        continue-on-error: true
+      - name: Music Victoria
+        run: npm run ingest:music-victoria
+        continue-on-error: true
