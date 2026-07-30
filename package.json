@@ -6,7 +6,8 @@
   "scripts": {
     "ingest:ticketmaster": "node scripts/ingest-ticketmaster.js",
     "ingest:rrr": "node scripts/ingest-rrr.js",
-    "ingest:art-openings": "node scripts/ingest-art-openings.js"
+    "ingest:art-openings": "node scripts/ingest-art-openings.js",
+    "ingest:music-victoria": "node scripts/ingest-music-victoria.js"
   },
   "dependencies": {
     "cheerio": "^1.2.0",

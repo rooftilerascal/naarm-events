@@ -108,7 +108,7 @@ async function fetchUpcomingEvents() {
   url.searchParams.set('select', '*');
   url.searchParams.set('date_start', `gte.${todayISO()}`);
   url.searchParams.set('order', 'date_start.asc');
-  url.searchParams.set('limit', '1000');
+  url.searchParams.set('limit', '5000');
 
   const res = await fetch(url, {
     headers: {
@@ -142,6 +142,7 @@ function sourceLabel(sourceName) {
     ticketmaster: 'Ticketmaster',
     rrr_gig_guide: 'RRR Gig Guide',
     art_openings_melbourne: 'Art Openings Melbourne',
+    music_victoria: 'Music Victoria',
   }[sourceName] ?? sourceName;
 }
 
