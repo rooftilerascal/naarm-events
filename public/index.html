@@ -12,7 +12,6 @@
 <body>
   <header class="site-header">
     <h1>Events in Naarm</h1>
-    <p class="tagline">Melbourne gigs and events, pulled from Ticketmaster, RRR, Music Victoria &amp; Art Openings Melbourne</p>
   </header>
 
   <div class="controls">
@@ -21,19 +20,21 @@
       <button class="chip" data-range="today" type="button">Today</button>
       <button class="chip" data-range="tomorrow" type="button">Tomorrow</button>
       <button class="chip" data-range="weekend" type="button">This weekend</button>
-      <button class="chip" id="filter-free" type="button">Free only</button>
+      <button class="chip" id="filter-free" type="button">Free</button>
     </div>
 
     <div class="filters">
       <input id="filter-search" type="search" placeholder="Search by name or venue…" />
-      <select id="filter-suburb"><option value="">All suburbs</option></select>
+      <select id="filter-region"><option value="">All regions</option></select>
+      <div class="multiselect" id="suburb-multiselect">
+        <button type="button" class="multiselect__toggle" id="suburb-multiselect-toggle">All suburbs</button>
+        <div class="multiselect__panel" id="suburb-multiselect-panel" hidden></div>
+      </div>
       <select id="filter-category"><option value="">All categories</option></select>
-      <select id="filter-source"><option value="">All sources</option></select>
     </div>
   </div>
 
   <p id="result-count" class="result-count"></p>
-  <p class="disclaimer">"Likely free" is a guess based on venue/event patterns, not confirmed — always check before heading out.</p>
 
   <main>
     <p id="status" class="status">Loading events…</p>

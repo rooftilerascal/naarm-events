@@ -2,9 +2,10 @@ import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './config.js';
 
 const agenda = document.getElementById('agenda');
 const status = document.getElementById('status');
-const suburbFilter = document.getElementById('filter-suburb');
+const regionFilter = document.getElementById('filter-region');
+const suburbToggle = document.getElementById('suburb-multiselect-toggle');
+const suburbPanel = document.getElementById('suburb-multiselect-panel');
 const categoryFilter = document.getElementById('filter-category');
-const sourceFilter = document.getElementById('filter-source');
 const searchInput = document.getElementById('filter-search');
 const resultCount = document.getElementById('result-count');
 const quickFilters = document.getElementById('quick-filters');
@@ -13,6 +14,7 @@ const freeFilter = document.getElementById('filter-free');
 let allEvents = [];
 let activeRange = 'all';
 let freeOnly = false;
+let selectedSuburbs = new Set();
 
 // --- Local-date helpers -----------------------------------------------
 // IMPORTANT: never use Date#toISOString() here. It converts to UTC, and
@@ -71,6 +73,103 @@ function normalize(raw, groupMap) {
 
 const normalizeCategory = (raw) => normalize(raw, CATEGORY_GROUPS);
 const normalizeSuburb = (raw) => normalize(raw, SUBURB_GROUPS);
+
+// --- Region grouping -----------------------------------------------------
+// Broad regions for quick browsing, on top of the precise per-suburb list
+// (kept separately as a multi-select for anyone who wants exact suburbs
+// rather than a whole region). Order here also controls dropdown order.
+const REGION_ORDER = [
+  'City', 'Inner North', 'Inner East', 'Bayside', 'Inner West',
+  'Outer East', 'South East', 'North', 'West',
+];
+
+const SUBURB_REGIONS = {
+  // City
+  melbourne: 'City', 'melbourne cbd': 'City', southbank: 'City', docklands: 'City',
+  'east melbourne': 'City', 'north melbourne': 'City', 'west melbourne': 'City',
+  'south wharf': 'City', parkville: 'City',
+  // Inner North
+  carlton: 'Inner North', 'carlton north': 'Inner North', fitzroy: 'Inner North',
+  'fitzroy north': 'Inner North', collingwood: 'Inner North', abbotsford: 'Inner North',
+  'clifton hill': 'Inner North', northcote: 'Inner North', thornbury: 'Inner North',
+  preston: 'Inner North', reservoir: 'Inner North', brunswick: 'Inner North',
+  'brunswick east': 'Inner North', 'brunswick west': 'Inner North', coburg: 'Inner North',
+  'coburg north': 'Inner North', 'pascoe vale': 'Inner North', 'pascoe vale south': 'Inner North',
+  fawkner: 'Inner North', batman: 'Inner North', merlynston: 'Inner North',
+  // Inner East
+  richmond: 'Inner East', cremorne: 'Inner East', burnley: 'Inner East', hawthorn: 'Inner East',
+  'hawthorn east': 'Inner East', kew: 'Inner East', 'kew east': 'Inner East', camberwell: 'Inner East',
+  canterbury: 'Inner East', balwyn: 'Inner East', 'balwyn north': 'Inner East', 'surrey hills': 'Inner East',
+  'box hill': 'Inner East', 'glen iris': 'Inner East', malvern: 'Inner East', 'malvern east': 'Inner East',
+  toorak: 'Inner East', armadale: 'Inner East', prahran: 'Inner East', windsor: 'Inner East',
+  'south yarra': 'Inner East',
+  // Bayside
+  'st kilda': 'Bayside', 'st kilda east': 'Bayside', 'st kilda west': 'Bayside', elwood: 'Bayside',
+  balaclava: 'Bayside', ripponlea: 'Bayside', caulfield: 'Bayside', 'caulfield north': 'Bayside',
+  'caulfield south': 'Bayside', 'caulfield east': 'Bayside', 'port melbourne': 'Bayside',
+  'south melbourne': 'Bayside', 'albert park': 'Bayside', 'middle park': 'Bayside', brighton: 'Bayside',
+  'brighton east': 'Bayside', elsternwick: 'Bayside', gardenvale: 'Bayside', hampton: 'Bayside',
+  sandringham: 'Bayside', 'black rock': 'Bayside', beaumaris: 'Bayside',
+  // Inner West
+  footscray: 'Inner West', yarraville: 'Inner West', seddon: 'Inner West', kingsville: 'Inner West',
+  maidstone: 'Inner West', maribyrnong: 'Inner West', 'west footscray': 'Inner West',
+  braybrook: 'Inner West', tottenham: 'Inner West', sunshine: 'Inner West', 'sunshine north': 'Inner West',
+  'sunshine west': 'Inner West', 'ascot vale': 'Inner West', 'moonee ponds': 'Inner West',
+  essendon: 'Inner West', 'essendon north': 'Inner West', aberfeldie: 'Inner West', flemington: 'Inner West',
+  kensington: 'Inner West', newmarket: 'Inner West', 'avondale heights': 'Inner West', niddrie: 'Inner West',
+  'airport west': 'Inner West', keilor: 'Inner West', 'keilor east': 'Inner West', 'keilor park': 'Inner West',
+  // Outer East
+  blackburn: 'Outer East', 'blackburn north': 'Outer East', 'blackburn south': 'Outer East',
+  nunawading: 'Outer East', ringwood: 'Outer East', 'ringwood east': 'Outer East', mitcham: 'Outer East',
+  vermont: 'Outer East', 'vermont south': 'Outer East', wantirna: 'Outer East', 'wantirna south': 'Outer East',
+  bayswater: 'Outer East', 'bayswater north': 'Outer East', 'ferntree gully': 'Outer East',
+  'upper ferntree gully': 'Outer East', boronia: 'Outer East', knoxfield: 'Outer East', rowville: 'Outer East',
+  scoresby: 'Outer East', 'wheelers hill': 'Outer East', 'glen waverley': 'Outer East',
+  'mount waverley': 'Outer East', syndal: 'Outer East', clayton: 'Outer East', 'clayton south': 'Outer East',
+  'notting hill': 'Outer East', oakleigh: 'Outer East', huntingdale: 'Outer East', chadstone: 'Outer East',
+  ashburton: 'Outer East', ashwood: 'Outer East', burwood: 'Outer East', 'burwood east': 'Outer East',
+  'forest hill': 'Outer East', alamein: 'Outer East', hartwell: 'Outer East', willison: 'Outer East',
+  riversdale: 'Outer East', croydon: 'Outer East', kilsyth: 'Outer East', montrose: 'Outer East',
+  mooroolbark: 'Outer East', lilydale: 'Outer East', 'chirnside park': 'Outer East', 'the basin': 'Outer East',
+  upwey: 'Outer East', tecoma: 'Outer East', belgrave: 'Outer East', 'ferny creek': 'Outer East',
+  doncaster: 'Outer East', 'doncaster east': 'Outer East', templestowe: 'Outer East',
+  'templestowe lower': 'Outer East', warrandyte: 'Outer East', bulleen: 'Outer East', eaglemont: 'Outer East',
+  ivanhoe: 'Outer East', 'ivanhoe east': 'Outer East', heidelberg: 'Outer East',
+  // South East
+  mordialloc: 'South East', aspendale: 'South East', edithvale: 'South East', chelsea: 'South East',
+  bonbeach: 'South East', carrum: 'South East', 'carrum downs': 'South East', 'patterson lakes': 'South East',
+  seaford: 'South East', frankston: 'South East', 'frankston south': 'South East',
+  'frankston north': 'South East', 'mount eliza': 'South East', langwarrin: 'South East', skye: 'South East',
+  springvale: 'South East', 'noble park': 'South East', dandenong: 'South East', keysborough: 'South East',
+  'dingley village': 'South East', braeside: 'South East', westall: 'South East',
+  'sandown village': 'South East', cranbourne: 'South East', hallam: 'South East',
+  'narre warren': 'South East', berwick: 'South East', officer: 'South East', beaconsfield: 'South East',
+  pakenham: 'South East', 'east pakenham': 'South East', moorabbin: 'South East', bentleigh: 'South East',
+  'bentleigh east': 'South East', mckinnon: 'South East', ormond: 'South East', glenhuntly: 'South East',
+  carnegie: 'South East', murrumbeena: 'South East', hughesdale: 'South East', cheltenham: 'South East',
+  highett: 'South East',
+  // North
+  broadmeadows: 'North', jacana: 'North', craigieburn: 'North', 'roxburgh park': 'North',
+  coolaroo: 'North', campbellfield: 'North', tullamarine: 'North', 'gladstone park': 'North',
+  greenvale: 'North', gowrie: 'North', upfield: 'North', epping: 'North', 'south morang': 'North',
+  'mill park': 'North', bundoora: 'North', thomastown: 'North', lalor: 'North', mernda: 'North',
+  doreen: 'North', wollert: 'North', eltham: 'North', 'diamond creek': 'North', 'wattle glen': 'North',
+  hurstbridge: 'North', research: 'North', greensborough: 'North', watsonia: 'North', whittlesea: 'North',
+  // West
+  'middle footscray': 'West', sunbury: 'West', 'diggers rest': 'West', watergardens: 'West',
+  'taylors lakes': 'West', 'caroline springs': 'West', delahey: 'West', sydenham: 'West',
+  hillside: 'West', kealba: 'West', williamstown: 'West', newport: 'West', spotswood: 'West',
+  altona: 'West', 'altona north': 'West', 'altona meadows': 'West', laverton: 'West',
+  'williams landing': 'West', 'point cook': 'West', werribee: 'West', 'werribee south': 'West',
+  'hoppers crossing': 'West', tarneit: 'West', truganina: 'West', 'wyndham vale': 'West',
+  melton: 'West', 'melton south': 'West', 'melton west': 'West', 'st albans': 'West',
+  'saint albans': 'West', 'deer park': 'West', albion: 'West', ardeer: 'West', ginifer: 'West',
+};
+
+function regionOf(suburb) {
+  if (!suburb) return null;
+  return SUBURB_REGIONS[suburb.trim().toLowerCase()] ?? null;
+}
 
 // --- Free-event inference ------------------------------------------------
 // Most sources never actually say whether an event is free. Rather than leave
@@ -173,15 +272,6 @@ function formatDateRange(dateStart, dateEnd) {
   return `Until ${end}`;
 }
 
-function sourceLabel(sourceName) {
-  return {
-    ticketmaster: 'Ticketmaster',
-    rrr_gig_guide: 'RRR Gig Guide',
-    art_openings_melbourne: 'Art Openings Melbourne',
-    music_victoria: 'Music Victoria',
-  }[sourceName] ?? sourceName;
-}
-
 // Minimal monochrome line-icon fallback, used whenever an event has no
 // image. Keyed by canonical category; anything unmapped falls through to
 // a generic "star" glyph.
@@ -201,21 +291,65 @@ function categoryIconSvg(category) {
 function populateFilterOptions() {
   const suburbs = [...new Set(allEvents.map((e) => e.suburb).filter(Boolean))].sort();
   const categories = [...new Set(allEvents.map((e) => e.category).filter(Boolean))].sort();
-  const sources = [...new Set(allEvents.map((e) => e.source_name).filter(Boolean))].sort();
+  const regionsPresent = new Set(allEvents.map((e) => regionOf(e.suburb)).filter(Boolean));
+  const regions = REGION_ORDER.filter((r) => regionsPresent.has(r));
 
-  for (const [select, values, labelFn] of [
-    [suburbFilter, suburbs, (v) => v],
-    [categoryFilter, categories, (v) => v],
-    [sourceFilter, sources, sourceLabel],
-  ]) {
-    for (const value of values) {
-      const option = document.createElement('option');
-      option.value = value;
-      option.textContent = labelFn(value);
-      select.appendChild(option);
-    }
+  for (const region of regions) {
+    const option = document.createElement('option');
+    option.value = region;
+    option.textContent = region;
+    regionFilter.appendChild(option);
+  }
+
+  for (const category of categories) {
+    const option = document.createElement('option');
+    option.value = category;
+    option.textContent = category;
+    categoryFilter.appendChild(option);
+  }
+
+  for (const suburb of suburbs) {
+    const label = document.createElement('label');
+    label.className = 'multiselect__option';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = suburb;
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) selectedSuburbs.add(suburb);
+      else selectedSuburbs.delete(suburb);
+      updateSuburbToggleLabel();
+      applyFilters();
+    });
+    const labelText = document.createElement('span');
+    labelText.textContent = suburb;
+    label.append(checkbox, labelText);
+    suburbPanel.appendChild(label);
   }
 }
+
+function updateSuburbToggleLabel() {
+  if (selectedSuburbs.size === 0) suburbToggle.textContent = 'All suburbs';
+  else if (selectedSuburbs.size <= 2) suburbToggle.textContent = [...selectedSuburbs].join(', ');
+  else suburbToggle.textContent = `${selectedSuburbs.size} suburbs`;
+}
+
+function positionSuburbPanel() {
+  const rect = suburbToggle.getBoundingClientRect();
+  const panelWidth = suburbPanel.offsetWidth || 200;
+  const left = Math.min(Math.max(rect.left, 8), window.innerWidth - panelWidth - 8);
+  suburbPanel.style.top = `${rect.bottom + 4}px`;
+  suburbPanel.style.left = `${left}px`;
+}
+
+suburbToggle.addEventListener('click', (e) => {
+  e.stopPropagation();
+  suburbPanel.hidden = !suburbPanel.hidden;
+  if (!suburbPanel.hidden) positionSuburbPanel();
+});
+
+document.addEventListener('click', (e) => {
+  if (!suburbPanel.hidden && !e.target.closest('#suburb-multiselect')) suburbPanel.hidden = true;
+});
 
 function buildThumbLink(event) {
   const link = document.createElement('a');
@@ -333,17 +467,16 @@ function matchesRange(event) {
 }
 
 function applyFilters() {
-  const suburb = suburbFilter.value;
+  const region = regionFilter.value;
   const category = categoryFilter.value;
-  const source = sourceFilter.value;
   const search = searchInput.value.trim().toLowerCase();
 
   const filtered = allEvents.filter((e) => {
     if (!matchesRange(e)) return false;
     if (freeOnly && e.price !== 'free' && e.price !== 'likely_free') return false;
-    if (suburb && e.suburb !== suburb) return false;
+    if (region && regionOf(e.suburb) !== region) return false;
+    if (selectedSuburbs.size > 0 && !selectedSuburbs.has(e.suburb)) return false;
     if (category && e.category !== category) return false;
-    if (source && e.source_name !== source) return false;
     if (search && !`${e.name} ${e.venue ?? ''}`.toLowerCase().includes(search)) return false;
     return true;
   });
@@ -351,7 +484,7 @@ function applyFilters() {
   renderAgenda(filtered);
 }
 
-for (const el of [suburbFilter, categoryFilter, sourceFilter]) el.addEventListener('change', applyFilters);
+for (const el of [regionFilter, categoryFilter]) el.addEventListener('change', applyFilters);
 searchInput.addEventListener('input', applyFilters);
 
 quickFilters.addEventListener('click', (e) => {
