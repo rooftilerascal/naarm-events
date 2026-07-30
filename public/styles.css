@@ -117,6 +117,14 @@ a {
   letter-spacing: 0.02em;
 }
 
+.disclaimer {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  opacity: 0.6;
+  margin: 0.35rem 0 0;
+}
+
 .status {
   text-align: center;
   color: var(--text-muted);
@@ -252,6 +260,11 @@ a {
   color: var(--text-muted);
   border: 1px solid var(--border);
   white-space: nowrap;
+}
+
+.badge--price {
+  color: var(--accent-purple);
+  border-color: var(--accent-purple);
 }
 
 @media (max-width: 560px) {

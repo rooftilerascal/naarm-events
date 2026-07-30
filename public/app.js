@@ -72,6 +72,35 @@ function normalize(raw, groupMap) {
 const normalizeCategory = (raw) => normalize(raw, CATEGORY_GROUPS);
 const normalizeSuburb = (raw) => normalize(raw, SUBURB_GROUPS);
 
+// --- Free-event inference ------------------------------------------------
+// Most sources never actually say whether an event is free. Rather than leave
+// everything "unknown", we flag a conservative set of cases where it's a safe
+// bet: specific venues that are consistently free-entry, and event-name
+// patterns (open mic, trivia, etc.) that are free almost by definition. This
+// is an inference, not a fact — it's labelled "Likely free" (never plain
+// "Free") and the UI carries a disclaimer. Extend LIKELY_FREE_VENUES as you
+// personally know of others; the name patterns are general conventions about
+// event types, not guesses about any one specific unknown fact.
+const LIKELY_FREE_VENUES = new Set(['brunswick artists bar'].map((v) => v.toLowerCase()));
+
+const LIKELY_FREE_NAME_PATTERNS = [
+  /open mic/i,
+  /\bjam\s*(night|session)?\b/i,
+  /trivia/i,
+  /quiz night/i,
+  /poetry reading/i,
+  /spoken word/i,
+  /artist talk/i,
+  /vinyl (night|session)/i,
+];
+
+function inferPrice(event) {
+  if (event.price !== 'unknown') return event.price; // trust explicit 'free'/'paid' data as-is
+  if (event.venue && LIKELY_FREE_VENUES.has(event.venue.trim().toLowerCase())) return 'likely_free';
+  if (LIKELY_FREE_NAME_PATTERNS.some((re) => re.test(event.name))) return 'likely_free';
+  return 'unknown';
+}
+
 // Theatre/musical seasons repeat the same show under many session rows (e.g.
 // "Steel Magnolias" playing 20+ nights). For Arts & Theatre only, collapse each
 // (name, venue) group down to its single nearest-upcoming row, and stretch
@@ -120,7 +149,12 @@ async function fetchUpcomingEvents() {
   });
   if (!res.ok) throw new Error(`Failed to load events (${res.status})`);
   const rows = await res.json();
-  const normalized = rows.map((e) => ({ ...e, category: normalizeCategory(e.category), suburb: normalizeSuburb(e.suburb) }));
+  const normalized = rows.map((e) => ({
+    ...e,
+    category: normalizeCategory(e.category),
+    suburb: normalizeSuburb(e.suburb),
+    price: inferPrice(e),
+  }));
   return collapseTheatreRuns(normalized);
 }
 
@@ -243,10 +277,15 @@ function renderEventRow(event) {
   `;
   row.appendChild(body);
 
-  if (event.category) {
+  const priceBadge = { free: 'Free', likely_free: 'Likely free', paid: 'Paid' }[event.price];
+
+  if (event.category || priceBadge) {
     const tags = document.createElement('div');
     tags.className = 'event-row__tags';
-    tags.innerHTML = `<span class="badge">${event.category}</span>`;
+    tags.innerHTML = `
+      ${event.category ? `<span class="badge">${event.category}</span>` : ''}
+      ${priceBadge ? `<span class="badge badge--price">${priceBadge}</span>` : ''}
+    `;
     row.appendChild(tags);
   }
 
@@ -301,7 +340,7 @@ function applyFilters() {
 
   const filtered = allEvents.filter((e) => {
     if (!matchesRange(e)) return false;
-    if (freeOnly && e.price !== 'free') return false;
+    if (freeOnly && e.price !== 'free' && e.price !== 'likely_free') return false;
     if (suburb && e.suburb !== suburb) return false;
     if (category && e.category !== category) return false;
     if (source && e.source_name !== source) return false;
