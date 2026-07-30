@@ -8,9 +8,11 @@ const sourceFilter = document.getElementById('filter-source');
 const searchInput = document.getElementById('filter-search');
 const resultCount = document.getElementById('result-count');
 const quickFilters = document.getElementById('quick-filters');
+const freeFilter = document.getElementById('filter-free');
 
 let allEvents = [];
 let activeRange = 'all';
+let freeOnly = false;
 
 // --- Local-date helpers -----------------------------------------------
 // IMPORTANT: never use Date#toISOString() here. It converts to UTC, and
@@ -299,6 +301,7 @@ function applyFilters() {
 
   const filtered = allEvents.filter((e) => {
     if (!matchesRange(e)) return false;
+    if (freeOnly && e.price !== 'free') return false;
     if (suburb && e.suburb !== suburb) return false;
     if (category && e.category !== category) return false;
     if (source && e.source_name !== source) return false;
@@ -313,10 +316,16 @@ for (const el of [suburbFilter, categoryFilter, sourceFilter]) el.addEventListen
 searchInput.addEventListener('input', applyFilters);
 
 quickFilters.addEventListener('click', (e) => {
-  const chip = e.target.closest('.chip');
+  const chip = e.target.closest('.chip[data-range]');
   if (!chip) return;
   activeRange = chip.dataset.range;
-  for (const c of quickFilters.querySelectorAll('.chip')) c.classList.toggle('is-active', c === chip);
+  for (const c of quickFilters.querySelectorAll('.chip[data-range]')) c.classList.toggle('is-active', c === chip);
+  applyFilters();
+});
+
+freeFilter.addEventListener('click', () => {
+  freeOnly = !freeOnly;
+  freeFilter.classList.toggle('is-active', freeOnly);
   applyFilters();
 });
 
